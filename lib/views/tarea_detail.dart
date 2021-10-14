@@ -1,4 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:tareas_practica/database/database_helper_tarea.dart';
+import 'package:tareas_practica/models/tarea_model.dart';
 
 class TareaForm extends StatefulWidget {
   const TareaForm({Key? key}) : super(key: key);
@@ -8,10 +13,15 @@ class TareaForm extends StatefulWidget {
 }
 
 class _TareaFormState extends State<TareaForm> {
-
+  late DatabaseHelperTarea _databaseHelperTarea;
 
   var fechaSeleccionada=DateTime.now();
   var fecha=DateTime.now().toString();
+  TextEditingController _controllerTitulo = TextEditingController();
+  TextEditingController _controllerDescripcion = TextEditingController();
+
+
+
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
         context: context,
@@ -20,21 +30,64 @@ class _TareaFormState extends State<TareaForm> {
         lastDate: new DateTime(2030)),
     dateTime
     ;
-
+    final TimeOfDay? time = await showTimePicker(
+      context: context,
+      initialTime: new TimeOfDay(hour: TimeOfDay.now().hour, minute: TimeOfDay.now().minute),
+    );
     if (picked != null) {
-      setState(() {
-        this.fechaSeleccionada=picked;
-        this.fecha=this.fechaSeleccionada.toString();
-      });
+      if(time != null){
+        setState(() {
+          this.fechaSeleccionada=picked;
+          this.fechaSeleccionada = new DateTime(this.fechaSeleccionada.year,this.fechaSeleccionada.month,this.fechaSeleccionada.day,time.hour,time.minute);
+          this.fecha = this.fechaSeleccionada.toIso8601String();
+        });
+
+      }else {
+        setState(() {
+          this.fechaSeleccionada = picked;
+          this.fecha = this.fechaSeleccionada.toIso8601String();
+        });
+      }
+    }
+  }
+
+
+
+  guardar(){
+    if(_controllerTitulo.text !='' && _controllerDescripcion.text!=''){
+      try {
+        var tarea = TareaModel(
+            titulo: _controllerTitulo.text,
+            descripcion: _controllerDescripcion.text,
+            fecha: this.fecha,
+            status: 0
+        );
+        _databaseHelperTarea.insert(tarea.toMap()).then((result) {
+          if (result > 0) {
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                content: Text('Tarea creada correctamente')));
+            Navigator.pop(context);
+            Navigator.pushNamed(context, '/home');
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('La solicitud no se completo')));
+          }
+        });
+      }catch(Exception){
+        print(Exception);
+      }
+
 
     }
   }
   @override
-  void setState(VoidCallback fn) {
-    // TODO: implement setState
-    super.setState(fn);
+  void initState() {
+    // TODO: implement initState
+    super.initState();
     this.fecha=this.fechaSeleccionada.toString();
+    this._databaseHelperTarea = DatabaseHelperTarea();
   }
+
   @override
   Widget build(BuildContext context) {
 
@@ -122,6 +175,7 @@ class _TareaFormState extends State<TareaForm> {
                             borderRadius: BorderRadius.circular(20)
                         ),
                         child: TextField(
+                          controller: _controllerTitulo,
                           decoration: InputDecoration(
                               focusColor: Color.fromRGBO(147, 37, 255, 0),
                               focusedBorder:OutlineInputBorder(
@@ -175,6 +229,7 @@ class _TareaFormState extends State<TareaForm> {
                             borderRadius: BorderRadius.circular(20)
                         ),
                         child: TextField(
+                          controller: _controllerDescripcion,
                           maxLines: 10,
                           decoration: InputDecoration(
                               focusColor: Color.fromRGBO(147, 37, 255, 0.2),
@@ -234,9 +289,10 @@ class _TareaFormState extends State<TareaForm> {
                                     child: Container(
                                       height: double.infinity,
                                       margin: EdgeInsets.only(
-                                          left: 5
+                                          left: 8,
+                                        top: 8
                                       ),
-                                      child: Icon(Icons.alarm,
+                                      child: FaIcon(FontAwesomeIcons.calendar,
                                         color: Color.fromRGBO(28, 205, 124, 1.0),
                                         size: 35,),
                                     ),
@@ -263,10 +319,10 @@ class _TareaFormState extends State<TareaForm> {
                           alignment: Alignment.bottomRight,
                           child: ElevatedButton(
                             onPressed: () {
-
+                              guardar();
                             },
-                            child: Icon(Icons.description,
-                              size: 40,),
+                            child: FaIcon(FontAwesomeIcons.solidSave,
+                            size: 40,),
                             style: ElevatedButton.styleFrom(
                                 shape: CircleBorder(),
                                 padding: EdgeInsets.all(10),
